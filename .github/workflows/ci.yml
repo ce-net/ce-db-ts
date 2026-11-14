@@ -1,0 +1,34 @@
+# Manual only (Leif 2026-10-14 00:12 CEST: "We have used 90% of our actions on GitHub"): run it with
+# `gh workflow run test -R Leif-Rydenfalk/ce-db-ts`. The live test and the example need ce-db-dev-store from ce-db-rs
+# (private: read with the deploy keys in secret CE_DEPLOY_KEYS, one per private dep repo).
+name: test
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CARGO_NET_GIT_FETCH_WITH_CLI: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: dtolnay/rust-toolchain@stable
+      - name: private git deps (read-only deploy keys)
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.CE_DEPLOY_KEYS }}
+      - run: git config --global url."ssh://git@github.com/".insteadOf "https://github.com/"
+      - name: the dev store
+        run: cargo install --git https://github.com/Leif-Rydenfalk/ce-db-rs ce-db-dev --bin ce-db-dev-store --locked
+      - run: npm ci
+      - name: npm test (core, defineRecord, schema-change tsc fixtures, live against the dev store, the quickstart)
+        run: npm test
+      - name: the generated state.store clients are current
+        run: |
+          cargo install --git https://github.com/Leif-Rydenfalk/rust-stack --rev 2d463628f491170b18f249bec13d014faf2317c7 ce-wire-gen --locked
+          git clone --depth 1 https://github.com/Leif-Rydenfalk/state-store-cell ../state-store-cell
+          npm run gen
+          git diff --exit-code src/wire/ || (echo 'src/wire is stale: run npm run gen and commit' && exit 1)

@@ -8,6 +8,7 @@ import { everyoneGrant, grantFromLink, Refused, StateStoreClient, WireError, typ
 
 export * from './core.js';
 export * from './db.js';
+export * from './define.js';
 
 export interface OpenOptions {
   /** WebSocket URL of the door. Default: `w=` in the fragment, else this page's origin + `/wire`. */

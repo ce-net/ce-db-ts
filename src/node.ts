@@ -17,6 +17,7 @@ import { Closed, Refused, StateStoreClient, Timeout, WireError } from './wire/no
 
 export * from './core.js';
 export * from './db.js';
+export * from './define.js';
 
 // node 18 has no global WebCrypto; ULIDs need getRandomValues
 if (!globalThis.crypto) (globalThis as { crypto: unknown }).crypto = webcrypto;

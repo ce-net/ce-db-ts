@@ -22,7 +22,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "tsc -p tsconfig.json && node --test dist/test/",
+    "test": "tsc -p tsconfig.json && tsc -p examples && node --test dist/test/*.test.js",
+    "example": "tsc -p tsconfig.json && tsc -p examples && node examples/dist/quickstart.js",
     "gen": "ce-wire-gen --lang ts ../state-store-cell/crates/state-store-api/src/lib.rs -o src/wire/node && ce-wire-gen --lang ts-web ../state-store-cell/crates/state-store-api/src/lib.rs -o src/wire/web",
     "prepare": "tsc -p tsconfig.json"
   },

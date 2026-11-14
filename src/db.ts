@@ -232,13 +232,21 @@ class Mirror<T> {
 
   async ready(timeoutMs = 10000): Promise<void> {
     if (!this.synced) {
-      await Promise.race([
-        new Promise<void>((r) => this.waiters.push(r)),
-        sleep(timeoutMs).then(() => {
-          if (!this.synced)
-            throw new DbError({ kind: 'Unavailable', tried: [`the mirror of ${this.meta.collection} did not load within ${timeoutMs / 1000} s (${this.link})`] });
-        }),
-      ]);
+      // the deadline timer is cleared once synced: a pending timer would keep a finished program alive for 10 s
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        await Promise.race([
+          new Promise<void>((r) => this.waiters.push(r)),
+          new Promise<void>((_, rej) => {
+            timer = setTimeout(() => {
+              if (!this.synced)
+                rej(new DbError({ kind: 'Unavailable', tried: [`the mirror of ${this.meta.collection} did not load within ${timeoutMs / 1000} s (${this.link})`] }));
+            }, timeoutMs);
+          }),
+        ]);
+      } finally {
+        clearTimeout(timer);
+      }
     }
     if (this.error) throw this.error;
   }
@@ -313,6 +321,7 @@ class Mirror<T> {
           this.setLink('offline');
           await sleep(backoff);
           backoff = Math.min(backoff * 2, 30000);
+          if (this.synced) this.setLink('resyncing');
           continue;
         }
       }
@@ -335,7 +344,9 @@ class Mirror<T> {
       await sleep(backoff);
       backoff = Math.min(backoff * 2, 30000);
       this.setLink('resyncing');
-      // the same connection factory reaches the same replica in slice 1: resume from the head (DB-SDK-DESIGN.md 4.1)
+      // list again before following the stream: the store may have restarted, lost or renumbered rows, or be another
+      // replica; the walk emits only the difference from the mirror (no duplicate, no gap)
+      needList = true;
     }
   }
 

@@ -1,8 +1,51 @@
 # ce-db-ts: typed state.store collections for TypeScript (`@ce-net/db`)
 
-Slice 1 of `repo:state-store-cell/docs/DB-SDK-DESIGN.md`, the TypeScript half beside `repo:ce-db-rs`. The schema is a
-Rust struct with `#[derive(Record)]`; `ce-wire-gen --records <schema crate>/src/lib.rs --lang ts -o sdk/ts` (or
-`--lang ts-web`) writes the typed collection, and this package is its runtime, in node and in the browser.
+Insert, get, update, query by a declared index and watch live, with typed rows and typed errors, in node and the
+browser. The Rust half is `repo:ce-db-rs` (the same surface and bytes), the cross-language contract is
+`repo:db-conformance`, a worked app is `repo:parts-demo`. Design: `repo:state-store-cell/docs/DB-SDK-DESIGN.md`.
+
+## Quickstart (a dev store, two terminals)
+
+```sh
+ce-db-dev-store --grant dev='state.quickstart.*'      # from ce-db-rs: cargo install --git <ce-db-rs> ce-db-dev
+npm install && CE_DB_STORE=127.0.0.1:7811 CE_DB_CAP=dev npm run example
+```
+
+`examples/quickstart.ts`, the whole program:
+
+```ts
+import { open, defineRecord, field } from '@ce-net/db';
+
+const Task = defineRecord({ app: 'quickstart', collection: 'tasks', version: 1,
+  fields: { id: field.id().key(), title: field.string().max(200), done: field.bool().index() } });
+
+const db = await open('quickstart');
+const tasks = Task.of(db);                                   // registers the schema when it is missing
+const live = await tasks.byDone(false).watch();              // every open task now, 'synced', then changes
+await tasks.insert({ title: 'buy milk', done: false });      // the ULID key is made when left out
+console.log('open tasks:', await tasks.byDone(false).count());
+for (let c; (c = await live.next(500)); ) console.log(c);     // { kind: 'added', doc } | changed | removed | synced
+db.close();
+```
+
+```
+open tasks: 1
+{ kind: 'added', doc: { id: '01K...', title: 'buy milk', done: false } }
+{ kind: 'synced' }
+```
+
+`defineRecord` infers the row type (`RowOf<typeof Task>` is `{ id: string; title: string; done: boolean }`) and adds
+one `by<Field>` per index; it writes the same meta, so registers the same schema, as `#[derive(Record)]` on the equal
+Rust struct (`test/define.test.ts` checks it against parts-demo's generated `Part`). Field types: `string bool u8 u16
+u32 i8 i16 i32 u64 i64` (`bigint`) `f64 id millis hex` (`Uint8Array`) `list(f)`, with `.key() .index() .ordered()
+.max(n) .since(v) .optional() .secret() .doc(text)`. An app that has a Rust schema crate generates its TypeScript
+instead (`ce-wire-gen --records <crate>/src/lib.rs --lang ts`), so one file is the source for every language.
+
+A schema change is a compile error in the code that used the old shape: `test-types/` removes a field and changes a
+type, and `npm test` checks that tsc fails the old caller (TS2353 unknown field, TS2339 no `byBin`, TS2322 wrong type),
+for a defined record and for generated code alike.
+
+## With generated code
 
 ```ts
 import { open } from '@ce-net/db';                        // browser: '@ce-net/db/web'
@@ -35,6 +78,13 @@ const live = p.byBin('A4').store();                        // React: useSyncExte
 Not in slice 1: the browser's IndexedDB cache and offline outbox (DB-SDK-DESIGN 4.2), wallet lookup of grants in
 node (pass `cap`, `$CE_DB_CAP` or `~/.config/ce-state/<app>.cap`), CRDT and ledger collections.
 
+- A broken watch stream (store restarted, network, another replica) goes `offline`, then `resyncing` while the
+  collection is listed again; watchers get only the changes they missed (`onLink(cb)` for a UI badge; db-conformance
+  D11 kills a dev store mid-watch to prove it).
+
 ```
-npm install && npm test     # unit tests, and a live test against ce-db-dev-store ($CE_DB_DEV_STORE or PATH)
+npm install && npm test     # unit, defineRecord, the tsc schema-change fixtures, live against ce-db-dev-store
+                            # ($CE_DB_DEV_STORE or PATH), and the quickstart run twice
 ```
+
+CI: `.github/workflows/ci.yml`, manual (`gh workflow run test`).
