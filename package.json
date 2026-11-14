@@ -1,0 +1,33 @@
+{
+  "name": "@ce-net/db",
+  "version": "0.1.0",
+  "description": "ce-db for TypeScript: typed state.store collections (insert, get, update, remove, queries by declared index, live watch) in node and the browser",
+  "type": "module",
+  "license": "UNLICENSED",
+  "private": true,
+  "exports": {
+    ".": {
+      "types": "./dist/src/node.d.ts",
+      "default": "./dist/src/node.js"
+    },
+    "./web": {
+      "types": "./dist/src/web.d.ts",
+      "default": "./dist/src/web.js"
+    }
+  },
+  "files": [
+    "dist/src",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "tsc -p tsconfig.json && node --test dist/test/",
+    "gen": "ce-wire-gen --lang ts ../state-store-cell/crates/state-store-api/src/lib.rs -o src/wire/node && ce-wire-gen --lang ts-web ../state-store-cell/crates/state-store-api/src/lib.rs -o src/wire/web",
+    "prepare": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/node": "18.19.130",
+    "typescript": "5.6.3"
+  }
+}
