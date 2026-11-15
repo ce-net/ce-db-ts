@@ -7,7 +7,9 @@ browser. The Rust half is `repo:ce-db-rs` (the same surface and bytes), the cros
 ## Quickstart (a dev store, two terminals)
 
 ```sh
-ce-db-dev-store --grant dev='state.quickstart.*'      # from ce-db-rs: cargo install --git <ce-db-rs> ce-db-dev
+ce-db-dev-store --grant dev='state.quickstart.*'      # cargo install --git https://github.com/ce-net/ce-db-rs ce-db-dev
+npm install github:ce-net/ce-db-ts   # in your own project
+# or, in a clone of this repo:
 npm install && CE_DB_STORE=127.0.0.1:7811 CE_DB_CAP=dev npm run example
 ```
 
@@ -87,4 +89,13 @@ npm install && npm test     # unit, defineRecord, the tsc schema-change fixtures
                             # ($CE_DB_DEV_STORE or PATH), and the quickstart run twice
 ```
 
-CI: `.github/workflows/ci.yml`, manual (`gh workflow run test`).
+CI: `.github/workflows/ci.yml` runs `npm test` on every push and pull request, against a dev store built from
+ce-db-rs (whose wire crates are not public yet; see its README).
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## License
+
+Licensed under the Apache License, Version 2.0 ([LICENSE](LICENSE)). See [NOTICE](NOTICE).

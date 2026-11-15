@@ -1,9 +1,11 @@
-# Manual only (Leif 2026-10-14 00:12 CEST: "We have used 90% of our actions on GitHub"): run it with
-# `gh workflow run test -R Leif-Rydenfalk/ce-db-ts`. The live test and the example need ce-db-dev-store from ce-db-rs
-# (private: read with the deploy keys in secret CE_DEPLOY_KEYS, one per private dep repo).
-name: test
+name: ci
 on:
+  push:
+    branches: [main]
+  pull_request:
   workflow_dispatch:
+permissions:
+  contents: read
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -20,9 +22,8 @@ jobs:
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.CE_DEPLOY_KEYS }}
-      - run: git config --global url."ssh://git@github.com/".insteadOf "https://github.com/"
       - name: the dev store
-        run: cargo install --git https://github.com/Leif-Rydenfalk/ce-db-rs ce-db-dev --bin ce-db-dev-store --locked
+        run: cargo install --git https://github.com/ce-net/ce-db-rs ce-db-dev --bin ce-db-dev-store --locked
       - run: npm ci
       - name: npm test (core, defineRecord, schema-change tsc fixtures, live against the dev store, the quickstart)
         run: npm test
